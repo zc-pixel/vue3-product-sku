@@ -1,4 +1,8 @@
+![Vue3 Product SKU Demo](https://github.com/zc-pixel/vue3-product-sku/raw/main/images/demo.png)
+
 ```markdown
+
+
 # vue3-product-sku
 
 ## 简介
