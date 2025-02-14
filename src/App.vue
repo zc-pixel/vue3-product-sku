@@ -1,6 +1,6 @@
 <template>
   <div id="app">
-    <ProductSku color="black" :productStock="true" :productPrice="true" :memberPrice="true"  @dataReturned="handleDataReturned" />
+    <ProductSku :productStock="true" :productPrice="true" :memberPrice="true"  @dataReturned="handleDataReturned" />
   </div>
 </template>
 <script setup>

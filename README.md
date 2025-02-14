@@ -27,12 +27,10 @@ yarn add vue3-product-sku
 
 ```javascript
 <template>
-  <div id="app">
-      <Vue3ProductSku color="black" :productStock="true" :productPrice="true" :memberPrice="true"  @dataReturned="handleDataReturned" />
-</div>
+  <ProductSku color="black" :productStock="true" :productPrice="true" :memberPrice="true"  @dataReturned="handleDataReturned" />
 </template>
 <script setup>
-import Vue3ProductSku from 'vue3-product-sku';
+import ProductSku from 'vue3-product-sku';
  
 // 方法：处理从子组件返回的数据
 const handleDataReturned = (data) => {
@@ -46,30 +44,16 @@ const handleDataReturned = (data) => {
 `vue3-product-sku` 插件接受以下配置选项：
  
 | 参数名         | 类型       | 必填  | 描述                |
-|---------------|------------|------|---------------------|
-| `color`       | String     | 否   | 插件主题颜色。        |
-| `productStock`| Boolean    | 否   | 规格的库存。          |
-| `productPrice`| Boolean    | 否   | 规格的价格。          |
-| `memberPrice` | Boolean    | 否   | 规格的会员价、折扣价。 |
+|---------------|------------|------|--------------------------|
+| `color`       | String     | 否   | 插件主题颜色。例:'#1FABC4' |
+| `productStock`| Boolean    | 否   | 规格的库存。               |
+| `productPrice`| Boolean    | 否   | 规格的价格。               |
+| `memberPrice` | Boolean    | 否   | 规格的会员价、折扣价。      |
  
 ## 事件
 
 - `@dataReturned`: 返回规格项目和属性阵列。
 
-## 开发
-
-如果你打算贡献代码或开发这个插件，你可以使用以下命令：
-
-```bash
-# 启动开发服务器
-npm run dev
-
-# 构建插件
-npm run build
-
-# 预览构建结果
-npm run preview
-```
 
 ## 作者
 

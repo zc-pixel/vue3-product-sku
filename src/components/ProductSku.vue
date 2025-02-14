@@ -44,7 +44,7 @@
                   <input class="attr-name-value" v-model="cartesianProducts[rowIndex].productPrice" type="number" placeholder="价格">
               </td>
               <td v-if="props.memberPrice">
-                  <input class="attr-name-value" v-model="cartesianProducts[rowIndex].productPrice" type="number" placeholder="会员价格">
+                  <input class="attr-name-value" v-model="cartesianProducts[rowIndex].memberPrice" type="number" placeholder="会员价格">
               </td>
               <td v-if="props.productStock">
                   <input class="attr-name-value" v-model="cartesianProducts[rowIndex].productStock" type="number" placeholder="库存">
@@ -192,7 +192,7 @@
 
 </script>
 
-<style scoped>
+<style>
   .sku-btn{
     background-color: #1FABC4;
     color: #fff;
@@ -290,5 +290,4 @@
   th {
       background-color: #F8F8F8;
   }
-
 </style>
