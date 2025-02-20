@@ -2,195 +2,272 @@
   <template v-if="attr.length > 0">
       <div class="sku" :style="{'border-left':  `4px solid ${color}`}" v-for="(item, index) in attr" :key="index">
           <div class="attr-name">
-              <input class="attr-name-value" v-model="item.name" type="text" placeholder="输入规格名">
+              <input class="attr-name-value" v-model.trim="item.name" type="text" placeholder="输入规格名">
               <span class="delN" :style="{'color':color}" @click="onDelSku(index)">x</span>
           </div>
           <div class="add-attr">
               <div class="add-attr-value" :style="{'color':color}" v-for="(item2, index2) in item.value" :key="index2">
-              <div>{{ item2 }}</div>
-              <div class="delv" :style="{'color':color}" @click="onDelValue(index, index2)">x</div>
+                <div>{{ item2 }}</div>
+                <div class="delv" :style="{'color':color}" @click="onDelValue(index, index2)">x</div>
               </div>
               <div class="attr-value">
-              <input class="attr-value-value" v-model="addValues[index]" type="text" placeholder="输入规格值,多个值可用空格隔开一次添加">
-              <span class="addIcon" @click="onAddValue(index)">+</span>
+                <input class="attr-value-value" v-model="addValues[index]" type="text" placeholder="输入规格值,多个值可用空格隔开一次添加">
+                <span class="addIcon" @click="onAddValue(index)">+</span>
               </div>
           </div>
       </div>
   </template>
 
   <button class="sku-btn" :style="{ 'background-color': color }" @click="onAddSku">添加规格</button>
+
   <table border="1" v-if="attr.length > 0">
-      <thead>
-          <tr>
-              <template v-for="attribute in attr" :key="attribute.name">
-              <th v-if="attribute.name && attribute.value.length > 0">{{ attribute.name }}</th>
-              </template>
-              <th v-if="props.productPrice">价格</th>
-              <th v-if="props.memberPrice">会员价格</th>
-              <th v-if="props.productStock">库存</th>
-          </tr>
-      </thead>
-      <tbody>
-          <tr v-for="(combination, rowIndex) in combinations" :key="rowIndex">
-              <template v-for="(value, attrIndex) in combination">
-                  <td
-                      v-if="shouldRenderCell(rowIndex, attrIndex)"
-                      :rowspan="rowspans[attrIndex]"
-                  >
-                      {{ value }}
-                  </td>
-              </template>
-              <td v-if="props.productPrice">
-                  <input class="attr-name-value" v-model="cartesianProducts[rowIndex].productPrice" type="number" placeholder="价格">
-              </td>
-              <td v-if="props.memberPrice">
-                  <input class="attr-name-value" v-model="cartesianProducts[rowIndex].memberPrice" type="number" placeholder="会员价格">
-              </td>
-              <td v-if="props.productStock">
-                  <input class="attr-name-value" v-model="cartesianProducts[rowIndex].productStock" type="number" placeholder="库存">
-              </td>
-          </tr>
-      </tbody>
+     <thead>
+        <tr>
+           <th v-for="header in headers" :key="header">{{ header }}</th>
+           <th v-if="productPrice">价格</th>
+           <th v-if="memberPrice">会员价格</th>
+           <th v-if="productStock">库存</th>
+           <th v-if="productImg">产品图片</th>
+        </tr>
+     </thead>
+     <tbody>
+        <tr v-for="(row, rowIndex) in tableData" :key="rowIndex">
+           <template v-for="(cell, cellIndex) in row.specs" :key="cellIndex">
+              <td v-if="cell.show" :rowspan="cell.rowspan">{{ cell.value }}</td>
+           </template>
+           <td v-if="productPrice">
+              <input class="attr-name-value" v-model="row.productPrice" type="number" placeholder="价格">
+            </td>
+            <td v-if="memberPrice">
+              <input class="attr-name-value" v-model="row.memberPrice" type="number" placeholder="会员价格">
+            </td>
+            <td v-if="productStock">
+              <input class="attr-name-value" v-model="row.productStock" type="number" placeholder="库存">
+            </td>
+            <td v-if="productImg" style="width: 20%;">
+              <div class="productImg">
+                <template v-if="row.productImg">
+                  <img :src="row.productImg" alt="点击放大图片" height="50" @click="showModal(rowIndex)" />
+                  <button @click="deleteFile(rowIndex)" class="delete-button">❌</button>
+                </template>
+                <template v-else>
+                  <input type="file" accept="image/*" id="upload" @change="handleFileChange($event,rowIndex)" />
+                </template>
+              </div>
+            </td>
+        </tr>
+     </tbody>
   </table>
+
+  <div v-if="isModalVisible" @click="hideModal" class="modal-overlay">
+    <div class="modal">
+      <button @click="hideModal" class="close-button">&times;</button>
+      <img :src="selectedImage" alt="放大图片" class="modal-image" />
+    </div>
+  </div>
+
 </template>
 
 <script setup>
-  import { ref, watch } from 'vue';
-  defineOptions({
-    name: 'ProductSku'
-  })
+  import { ref, watch,onMounted } from 'vue';
   const attr = ref([]);
   const addValues = ref([]);
-  const combinations = ref([]);
-  const rowspans = ref([]);
-  const cartesianProducts = ref([]);
+  const isModalVisible = ref(false);
+  const selectedImage = ref('');
+  const tableData = ref([]);
+  const headers = ref([]);
 
   const props = defineProps({
-      color: {
-          type: String,
-          default: '#1FABC4'
-      },
-      productStock:{
-          type: Boolean,
-          default: true
-      },
-      productPrice: {
-          type: Boolean,
-          default: true
-      },
-      memberPrice: {
-          type: Boolean,
-          default: true
-      },
-  });
-// 定义自定义事件
-  const emit = defineEmits(['dataReturned']);
-
-  watch(attr, (newVal, oldVal) => {
-      generateTableData(hasEmptyNameOrValue(newVal))
-      getCartesianProducts(hasEmptyNameOrValue(newVal))
-      // 方法：发送数据到父组件:attr为规格项目,cartesianProducts为属性阵列
-      const dataToSend = {
-        attr: hasEmptyNameOrValue(newVal),
-        cartesianProducts: cartesianProducts.value
-      };
-      emit('dataReturned', dataToSend);
+    color: {
+      type: String,
+      default: '#1FABC4'
     },
-    { 
-      deep: true 
+    productStock: {
+      type: Boolean,
+      default: true
+    },
+    productPrice: {
+      type: Boolean,
+      default: true
+    },
+    memberPrice: {
+      type: Boolean,
+      default: true
+    },
+    productImg: {
+      type: Boolean,
+      default: true
+    },
+    deleteImg: {
+      type: Boolean,
+      default: false
+    },
+    parentTableData: {
+      type: Array,
+      default: () => []
+    },
+    parentAttr: {
+      type: Array,
+      default: () => []
     }
-  )
-  
-  //添加规格
+  });
+  //自定义emits事件
+  const emit = defineEmits(['data-quote', 'upload-img', 'delete-img']);
+  // 编辑时初始化数据
+  onMounted(() => {
+    if (props.parentTableData.length > 0 && props.parentAttr.length > 0) {
+      console.log(1111111111);
+      headers.value = props.parentAttr.map(item => item.name);
+      attr.value = [...props.parentAttr];
+      tableData.value = [...props.parentTableData];
+    }
+  });
+  // 监听规格变化并通过规格生成表格数据同时将数据通过data-quote返回给父组件
+  watch(() => attr.value, (newVal) => {
+    generateTableData(hasEmptyNameOrValue(newVal));
+  }, { deep: true });
+  // 添加规格
   const onAddSku = () => {
     attr.value.push({
       name: '',
       value: []
     });
-  }
-  //删除规格
+  };
+  // 删除规格
   const onDelSku = (index) => {
     attr.value.splice(index, 1);
-  }
-  //添加规格值
+  };
+  // 添加规格值
   const onAddValue = (index) => {
-    if (!addValues.value[index] || !addValues.value[index].trim()){
+    if (!addValues.value[index] || !addValues.value[index].trim()) {
       addValues.value[index] = '';
       return;
     }
-    var colorArray = addValues.value[index].trim().split(/\s+/)
-    attr.value[index].value = [...new Set([...attr.value[index].value, ...colorArray])]
+    const colorArray = addValues.value[index].trim().split(/\s+/);
+    attr.value[index].value = [...new Set([...attr.value[index].value, ...colorArray])];
     addValues.value[index] = '';
-  }
-  //删除规格值
-  const onDelValue = (index,index2) => {
+  };
+  // 删除规格值
+  const onDelValue = (index, index2) => {
     attr.value[index].value.splice(index2, 1);
-  }
-  
-  const hasEmptyNameOrValue = (array) => {
-    return array.filter(item => item.name !== '' && Array.isArray(item.value) && item.value.length > 0);
-  }
-  // 生成表格数据的函数
-  const generateTableData = (attr) => {
-    // 获取所有属性值的数组
-    const valuesArray = attr.map(attribute => attribute.value);
-    // 生成所有组合
-    combinations.value = getCombinations(valuesArray);
-
-    // 计算每个属性的 rowspan
-    rowspans.value = calculateRowspans(attr);
   };
-
-  // 获取所有可能的组合
-  const getCombinations = arrays => {
-    return arrays.reduce((acc, curr) => {
-      const res = [];
-      acc.forEach(a => {
-        curr.forEach(c => {
-          res.push([...a, c]);
-        });
-      });
-      return res;
-    }, [[]]);
+  // 上传图片
+  const handleFileChange = (event, rowIndex) => {
+    const file = event.target.files[0];
+    if (file && file.type.startsWith('image/')) {
+      emit('upload-img', file, rowIndex);
+    } else {
+      alert('Please select a valid image file.');
+    }
   };
+  // 删除图片
+  const deleteFile = (index) => {
+    if(props.deleteImg){
+      emit('delete-img', index);
+    }else{
+      tableData.value[index].productImg = ''; 
+    }
+  };
+  // 显示放大图片
+  const showModal = (index) => {
+    isModalVisible.value = true;
+    selectedImage.value = tableData.value[index].productImg;
+  };
+  // 放大图片隐藏
+  const hideModal = () => {
+    isModalVisible.value = false;
+  };
+  // 生成商品及表格数据
+  const generateTableData = (data) => {
+    headers.value = data.map(item => item.name);
+    const transformedData = transformData(data, tableData.value);
+    tableData.value = prepareTableData(transformedData, headers.value);
+    dataToSend();
+  };
+  // 父组件接收数据
+  const dataToSend = () => {
+    const dataReturned = {
+      attr: attr.value,
+      tableData: tableData.value
+    };
+    emit('data-quote', dataReturned);
+  };
+  //数据转换并存储已输入价格、库存等数据的行
+  const transformData = (data, existingData) => {
+    const keys = data.map(item => item.name);
+    const values = data.map(item => item.value);
+    const combinations = cartesianProduct(...values);
 
-  //构建最终的商品数据
-  const getCartesianProducts = (attr) => {
-    cartesianProducts.value = combinations.value.map(combination => {
+    const existingDataMap = new Map();
+    existingData.forEach(item => {
+      const key = keys.map(k => item.productSpec[k]).join('|');
+      existingDataMap.set(key, item);
+    });
+
+    return combinations.map(combo => {
       const productSpec = {};
-      combination.forEach((value, index) => {
-        const attrName = attr[index].name;
-        productSpec[attrName] = value;
+      keys.forEach((key, index) => {
+        productSpec[key] = combo[index];
       });
-      return {
+      const key = keys.map(k => productSpec[k]).join('|');
+      return existingDataMap.get(key) || {
         productSpec,
-        productPrice: '',
-        memberPrice: '',
-        productStock: ''
+        productPrice: "",
+        memberPrice: "",
+        productStock: "",
+        productImg: ""
       };
     });
   };
-  // 计算每个属性的 rowspan
-  const calculateRowspans = attributes => {
-    const spans = [];
-    const lengths = attributes.map(attr => attr.value.length);
-    for (let i = 0; i < lengths.length; i++) {
-      let span = 1;
-      for (let j = i + 1; j < lengths.length; j++) {
-        span *= lengths[j];
+  const prepareTableData = (data, headers) => {
+    const rowspanData = headers.reduce((acc, header) => {
+      acc[header] = calculateRowspan(data, header);
+      return acc;
+    }, {});
+    return data.map((item, rowIndex) => {
+      const specs = headers.map(header => ({
+        value: item.productSpec[header],
+        show: rowspanData[header][rowIndex]?.show ?? true,
+        rowspan: rowspanData[header][rowIndex]?.rowspan ?? 1
+      }));
+      return {
+        ...item,
+        specs
+      };
+    });
+  };
+  const cartesianProduct = (...arrays) => {
+    return arrays.reduce((acc, curr) => {
+      return acc.flatMap(d => curr.map(e => [d, e].flat()));
+    }, [[]]);
+  };
+  const calculateRowspan = (data, header) => {
+    const result = [];
+    let lastValue = null;
+    let lastIndex = 0;
+    data.forEach((item, index) => {
+      if (item.productSpec[header] !== lastValue) {
+        if (lastValue !== null) {
+          const count = index - lastIndex;
+          for (let i = lastIndex; i < index; i++) {
+            result[i] = { show: i === lastIndex, rowspan: count };
+          }
+        }
+        lastValue = item.productSpec[header];
+        lastIndex = index;
       }
-      spans.push(span);
+    });
+    const count = data.length - lastIndex;
+    for (let i = lastIndex; i < data.length; i++) {
+      result[i] = { show: i === lastIndex, rowspan: count };
     }
-    return spans;
+    return result;
   };
-
-  // 判断是否需要渲染单元格
-  const shouldRenderCell = (rowIndex, attrIndex) => {
-    const span = rowspans.value[attrIndex];
-    return rowIndex % span === 0;
+  const hasEmptyNameOrValue = (array) => {
+    return array.filter(item => item.name !== '' && Array.isArray(item.value) && item.value.length > 0);
   };
-
 </script>
+
 
 <style>
   .sku-btn{
@@ -290,4 +367,58 @@
   th {
       background-color: #F8F8F8;
   }
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+  }
+  .modal {
+    position: relative;
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    max-width: 90%;
+    max-height: 90%;
+    overflow: auto;
+  }
+
+  .close-button {
+    position: absolute;
+    top: 0px;
+    right:0px;
+    font-size: 30px;
+    cursor: pointer;
+    background: none; 
+    border: none;
+  }
+
+  .modal-image {
+    width: 500px;
+    height: auto;
+  }
+  .productImg{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-right: 10%;
+  }
+  .productImg img{
+    border: 1px solid #e5e6e7;
+    border-radius: 5px;
+  }
+  .delete-button{
+    font-size: 18px;
+    cursor: pointer;
+    background: none; 
+    border: none;
+    margin-left: 20px;
+  }
 </style>
+
