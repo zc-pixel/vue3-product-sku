@@ -269,7 +269,7 @@
 </script>
 
 
-<style>
+<style scoped>
   .sku-btn{
     background-color: #1FABC4;
     color: #fff;
